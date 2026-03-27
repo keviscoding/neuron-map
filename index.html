@@ -29,7 +29,7 @@
       <div id="route-info" class="hidden">
         <div id="route-status"></div>
         <div id="route-details"></div>
-        <button id="nav-btn" class="hidden">🔊 Start Voice Navigation</button>
+        <button id="nav-btn" class="hidden">🛴 Start Navigation</button>
         <div id="nav-instruction" class="hidden"></div>
       </div>
 
@@ -43,6 +43,15 @@
     </div>
 
     <div id="map"></div>
+
+    <!-- Navigation overlay — shown during active navigation -->
+    <div id="nav-overlay" class="hidden">
+      <div id="nav-overlay-top">
+        <div id="nav-overlay-instruction">Starting navigation...</div>
+        <div id="nav-overlay-meta"></div>
+      </div>
+      <button id="nav-exit-btn">✕ Exit Navigation</button>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
