@@ -1,9 +1,14 @@
 name: neuron-map
 static_sites:
   - name: neuron-map
+    github:
+      repo: keviscoding/neuron-map
+      branch: main
+      deploy_on_push: true
     build_command: npm install && npm run build
     output_dir: dist
     environment_slug: node-js
-    source_dir: /
-    routes:
-      - path: /
+    envs:
+      - key: VITE_MAPBOX_TOKEN
+        scope: BUILD_TIME
+        type: SECRET
