@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neuron Map — Routes That Actually Work</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.2/mapbox-gl.css" rel="stylesheet" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h1>🛴 Neuron Map</h1>
+      <p class="tagline">Routes that actually work.</p>
+
+      <div class="search-section">
+        <label for="start-input">Start</label>
+        <div id="geocoder-start"></div>
+
+        <label for="end-input">Destination</label>
+        <div id="geocoder-end"></div>
+      </div>
+
+      <button id="route-btn" disabled>Find Neuron Route</button>
+
+      <div id="route-info" class="hidden">
+        <div id="route-status"></div>
+        <div id="route-details"></div>
+        <button id="nav-btn" class="hidden">🔊 Start Voice Navigation</button>
+        <div id="nav-instruction" class="hidden"></div>
+      </div>
+
+      <div class="legend">
+        <h3>Zones</h3>
+        <div class="legend-item"><span class="swatch ride-zone"></span> Ride Zone</div>
+        <div class="legend-item"><span class="swatch no-ride"></span> No-Ride Zone</div>
+        <div class="legend-item"><span class="swatch slow-zone"></span> Slow Zone</div>
+        <div class="legend-item"><span class="swatch no-parking"></span> No-Parking Zone</div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

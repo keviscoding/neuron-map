@@ -1,0 +1,18 @@
+{
+  "name": "neuron-map",
+  "version": "1.0.0",
+  "description": "Neuron scooter route planner — routes that actually work",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "mapbox-gl": "^3.9.4",
+    "@mapbox/mapbox-gl-geocoder": "^5.0.3",
+    "@turf/turf": "^7.2.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0"
+  }
+}

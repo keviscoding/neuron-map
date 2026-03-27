@@ -1,0 +1,9 @@
+name: neuron-map
+static_sites:
+  - name: neuron-map
+    build_command: npm install && npm run build
+    output_dir: dist
+    environment_slug: node-js
+    source_dir: /
+    routes:
+      - path: /
