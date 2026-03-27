@@ -20,8 +20,11 @@ let startCoords = null;
 let endCoords = null;
 let lastRouteSteps = null;
 let lastRouteGeometry = null;
+let fullRouteCoords = null; // original full route for trimming
 let navWatchId = null;
 let userMarker = null;
+let currentHeading = 0;
+let isRerouting = false;
 
 // DOM
 const panel = document.getElementById("panel");
@@ -37,28 +40,110 @@ const navInstruction = document.getElementById("nav-instruction");
 const navMeta = document.getElementById("nav-meta");
 const navExitBtn = document.getElementById("nav-exit-btn");
 
-// --- User location marker (blue pulsing dot) ---
-function createUserMarkerEl() {
+// --- Directional arrow marker ---
+function createArrowEl() {
   const el = document.createElement("div");
-  el.innerHTML = `
-    <div style="
-      width: 20px; height: 20px;
-      background: #4285f4;
-      border: 3px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 0 0 6px rgba(66,133,244,0.3), 0 2px 8px rgba(0,0,0,0.3);
-    "></div>
-  `;
+  el.className = "user-arrow";
+  el.innerHTML = `<svg width="48" height="48" viewBox="0 0 48 48">
+    <defs>
+      <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+        <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.4"/>
+      </filter>
+    </defs>
+    <circle cx="24" cy="24" r="22" fill="rgba(66,133,244,0.15)" />
+    <polygon points="24,6 34,30 24,24 14,30" fill="#4285f4" stroke="#fff" stroke-width="2" filter="url(#shadow)" />
+  </svg>`;
   return el;
 }
 
-function updateUserMarker(lng, lat) {
+function updateUserMarker(lng, lat, heading) {
   if (!userMarker) {
-    userMarker = new mapboxgl.Marker({ element: createUserMarkerEl() })
+    userMarker = new mapboxgl.Marker({
+      element: createArrowEl(),
+      rotationAlignment: "map",
+      pitchAlignment: "map",
+    })
       .setLngLat([lng, lat])
+      .setRotation(heading || 0)
       .addTo(map);
   } else {
     userMarker.setLngLat([lng, lat]);
+    if (heading != null && !isNaN(heading)) {
+      userMarker.setRotation(heading);
+    }
+  }
+}
+
+// --- Route trimming: remove the part you've already ridden ---
+function findClosestPointIndex(coords, lngLat) {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < coords.length; i++) {
+    const dx = coords[i][0] - lngLat[0];
+    const dy = coords[i][1] - lngLat[1];
+    const d = dx * dx + dy * dy;
+    if (d < minDist) {
+      minDist = d;
+      minIdx = i;
+    }
+  }
+  return { index: minIdx, distance: Math.sqrt(minDist) };
+}
+
+function trimRouteToPosition(lngLat) {
+  if (!fullRouteCoords || fullRouteCoords.length < 2) return;
+
+  const { index, distance } = findClosestPointIndex(fullRouteCoords, lngLat);
+
+  // Trim: keep from closest point onward
+  const remaining = fullRouteCoords.slice(index);
+  if (remaining.length >= 2) {
+    map.getSource("route").setData({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: remaining },
+    });
+  }
+
+  // Off-route detection: if user is >80m from the route, reroute
+  // ~0.0008 degrees ≈ 80m at Newcastle's latitude
+  const OFF_ROUTE_THRESHOLD = 0.0008;
+  if (distance > OFF_ROUTE_THRESHOLD && !isRerouting) {
+    reroute(lngLat);
+  }
+}
+
+async function reroute(fromLngLat) {
+  if (isRerouting || !endCoords) return;
+  isRerouting = true;
+  navInstruction.textContent = "Rerouting...";
+
+  try {
+    const result = await getNeuronRoute(fromLngLat, endCoords, mapboxgl.accessToken);
+    if (result.ok) {
+      lastRouteSteps = result.steps;
+      lastRouteGeometry = result.geometry;
+      fullRouteCoords = [...result.geometry.coordinates];
+
+      map.getSource("route").setData({ type: "Feature", geometry: result.geometry });
+
+      // Restart voice nav with new steps
+      stopNavigation();
+      startNavigation(lastRouteSteps, (stepIndex, instruction) => {
+        navInstruction.textContent = instruction;
+        const next = lastRouteSteps[stepIndex + 1];
+        if (next) {
+          navMeta.textContent = next.distance > 1000
+            ? `${(next.distance / 1000).toFixed(1)} km`
+            : `${Math.round(next.distance)} m`;
+        } else {
+          navMeta.textContent = "Arriving soon";
+        }
+      });
+    }
+  } catch (e) {
+    console.warn("Reroute failed:", e);
+  } finally {
+    isRerouting = false;
   }
 }
 
@@ -111,7 +196,7 @@ useLocationBtn.addEventListener("click", () => {
       startCoords = [lng, lat];
 
       // Show marker
-      updateUserMarker(lng, lat);
+      updateUserMarker(lng, lat, 0);
 
       // Reverse geocode
       try {
@@ -234,6 +319,7 @@ routeBtn.addEventListener("click", async () => {
 
     lastRouteSteps = result.steps;
     lastRouteGeometry = result.geometry;
+    fullRouteCoords = [...result.geometry.coordinates];
     navBtn.classList.remove("hidden");
   } catch (err) {
     routeInfo.classList.remove("hidden");
@@ -269,20 +355,27 @@ function enterNavMode() {
     }
   });
 
-  // GPS tracking — center + rotate map to heading
+  // GPS tracking — center + rotate map to heading, trim route
   navWatchId = navigator.geolocation.watchPosition(
     (pos) => {
       const lng = pos.coords.longitude;
       const lat = pos.coords.latitude;
       const heading = pos.coords.heading;
 
-      updateUserMarker(lng, lat);
-
-      const opts = { center: [lng, lat], zoom: 17.5, pitch: 60, duration: 800 };
       if (heading != null && !isNaN(heading) && heading > 0) {
-        opts.bearing = heading;
+        currentHeading = heading;
       }
-      map.easeTo(opts);
+
+      updateUserMarker(lng, lat, currentHeading);
+      trimRouteToPosition([lng, lat]);
+
+      map.easeTo({
+        center: [lng, lat],
+        zoom: 17.5,
+        pitch: 60,
+        bearing: currentHeading,
+        duration: 800,
+      });
     },
     () => {},
     { enableHighAccuracy: true, maximumAge: 1500 }
@@ -303,7 +396,9 @@ function exitNavMode() {
   map.setPaintProperty("route-shadow", "line-width", 10);
   map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
 
+  // Restore full route line
   if (lastRouteGeometry) {
+    map.getSource("route").setData({ type: "Feature", geometry: lastRouteGeometry });
     const coords = lastRouteGeometry.coordinates;
     const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
     setTimeout(() => map.fitBounds(bounds, { padding: { top: 60, bottom: 300, left: 40, right: 40 } }), 500);
