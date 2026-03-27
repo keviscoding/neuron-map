@@ -59,6 +59,56 @@ function updateRouteButton() {
   document.getElementById("route-btn").disabled = !(startCoords && endCoords);
 }
 
+// --- Use my location ---
+const useLocationBtn = document.getElementById("use-location-btn");
+
+useLocationBtn.addEventListener("click", () => {
+  if (!("geolocation" in navigator)) {
+    useLocationBtn.textContent = "📍 Location not available";
+    return;
+  }
+
+  useLocationBtn.textContent = "📍 Getting location...";
+  useLocationBtn.classList.add("loading");
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lng = pos.coords.longitude;
+      const lat = pos.coords.latitude;
+      startCoords = [lng, lat];
+
+      // Reverse geocode to get a readable address
+      try {
+        const token = mapboxgl.accessToken;
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}`
+        );
+        const data = await res.json();
+        const placeName = data.features?.[0]?.place_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        geocoderStart.setInput(placeName);
+        useLocationBtn.textContent = "📍 Location set";
+      } catch {
+        geocoderStart.setInput(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        useLocationBtn.textContent = "📍 Location set";
+      }
+
+      useLocationBtn.classList.remove("loading");
+      updateRouteButton();
+
+      // Fly to user location
+      map.flyTo({ center: [lng, lat], zoom: 15 });
+    },
+    (err) => {
+      useLocationBtn.textContent = "📍 Couldn't get location";
+      useLocationBtn.classList.remove("loading");
+      setTimeout(() => {
+        useLocationBtn.textContent = "📍 Use my current location";
+      }, 3000);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
 // --- Map layers (loaded after fetching live zone data) ---
 
 map.on("load", async () => {
