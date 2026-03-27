@@ -2,24 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Neuron Map — Routes That Actually Work</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Neuron Map</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛴</text></svg>" />
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.2/mapbox-gl.css" rel="stylesheet" />
   <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.css" rel="stylesheet" />
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <div id="app">
-    <div id="sidebar">
-      <button id="sidebar-toggle" aria-label="Toggle panel">▼</button>
+  <!-- The map is always full screen -->
+  <div id="map"></div>
+
+  <!-- Bottom sheet panel -->
+  <div id="panel">
+    <div id="panel-handle" aria-label="Toggle panel"></div>
+    <div id="panel-content">
       <h1>🛴 Neuron Map</h1>
-      <p class="tagline">Routes that actually work.</p>
 
       <div class="search-section">
         <label>Start</label>
         <div id="geocoder-start"></div>
         <button id="use-location-btn">📍 Use my current location</button>
-
         <label>Destination</label>
         <div id="geocoder-end"></div>
       </div>
@@ -29,28 +34,20 @@
       <div id="route-info" class="hidden">
         <div id="route-status"></div>
         <div id="route-details"></div>
-        <button id="nav-btn" class="hidden">🛴 Start Navigation</button>
-        <div id="nav-instruction" class="hidden"></div>
       </div>
 
-      <div class="legend">
-        <h3>Zones</h3>
-        <div class="legend-item"><span class="swatch ride-zone"></span> Ride Zone</div>
-        <div class="legend-item"><span class="swatch no-ride"></span> No-Ride Zone</div>
-        <div class="legend-item"><span class="swatch slow-zone"></span> Slow Zone</div>
-        <div class="legend-item"><span class="swatch no-parking"></span> No-Parking Zone</div>
-      </div>
+      <button id="nav-btn" class="hidden">🛴 Start Navigation</button>
     </div>
+  </div>
 
-    <div id="map"></div>
-
-    <!-- Navigation overlay — shown during active navigation -->
-    <div id="nav-overlay" class="hidden">
-      <div id="nav-overlay-top">
-        <div id="nav-overlay-instruction">Starting navigation...</div>
-        <div id="nav-overlay-meta"></div>
-      </div>
-      <button id="nav-exit-btn">✕ Exit Navigation</button>
+  <!-- Navigation overlay — full screen during active nav -->
+  <div id="nav-overlay" class="hidden">
+    <div id="nav-top-card">
+      <div id="nav-instruction">Starting navigation...</div>
+      <div id="nav-meta"></div>
+    </div>
+    <div id="nav-bottom">
+      <button id="nav-exit-btn">✕ Exit</button>
     </div>
   </div>
 
