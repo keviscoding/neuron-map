@@ -276,3 +276,12 @@ map.addControl(
 );
 
 map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+// --- Mobile sidebar toggle ---
+const sidebarToggle = document.getElementById("sidebar-toggle");
+const sidebar = document.getElementById("sidebar");
+
+sidebarToggle.addEventListener("click", () => {
+  sidebar.classList.toggle("collapsed");
+  sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "▲" : "▼";
+});
